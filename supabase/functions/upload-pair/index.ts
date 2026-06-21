@@ -32,25 +32,43 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "请填写名称" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const apiKey = Deno.env.get("REMOVE_BG_API_KEY") || "";
+    const hfToken = Deno.env.get("HF_TOKEN") || "";
+    const rbKey = Deno.env.get("REMOVE_BG_API_KEY") || "";
 
     async function removeBg(file: File): Promise<Uint8Array> {
       const buf = new Uint8Array(await file.arrayBuffer());
-      if (!apiKey) return buf;
-      try {
-        const rbForm = new FormData();
-        rbForm.append("image_file", new Blob([buf]), file.name);
-        rbForm.append("size", "auto");
-        const r = await fetch("https://api.remove.bg/v1.0/removebg", {
-          method: "POST", headers: { "X-Api-Key": apiKey }, body: rbForm,
-        });
-        if (r.ok) return new Uint8Array(await r.arrayBuffer());
-        console.warn("remove.bg failed:", await r.text());
-        return buf;
-      } catch (e) {
-        console.warn("remove.bg error:", e);
-        return buf;
+
+      // 方法1: Hugging Face RMBG-1.4（免费，效果接近 remove.bg）
+      if (hfToken) {
+        try {
+          const r = await fetch("https://api-inference.huggingface.co/models/briaai/RMBG-1.4", {
+            method: "POST",
+            headers: { Authorization: "Bearer " + hfToken },
+            body: buf,
+          });
+          if (r.ok) {
+            const arr = await r.arrayBuffer();
+            if (arr.byteLength > 1000) return new Uint8Array(arr);
+          }
+          console.warn("HF failed, trying remove.bg...");
+        } catch (e) { console.warn("HF error:", e); }
       }
+
+      // 方法2: remove.bg（备用）
+      if (rbKey) {
+        try {
+          const rbForm = new FormData();
+          rbForm.append("image_file", new Blob([buf]), file.name);
+          rbForm.append("size", "auto");
+          const r = await fetch("https://api.remove.bg/v1.0/removebg", {
+            method: "POST", headers: { "X-Api-Key": rbKey }, body: rbForm,
+          });
+          if (r.ok) return new Uint8Array(await r.arrayBuffer());
+        } catch (e) { console.warn("remove.bg error:", e); }
+      }
+
+      // 方法3: 返回原图
+      return buf;
     }
 
     async function uploadToStorage(data: Uint8Array, prefix: string): Promise<string> {
