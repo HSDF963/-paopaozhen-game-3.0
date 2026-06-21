@@ -4615,7 +4615,10 @@ var _bm_c9d9=868920,_ck_b836="4c43f2c3ee7a";</script>
 <!-- Supabase 改用原生 fetch，零依赖 -->
 <script>
 (function(){
+  try{
   'use strict';
+  var gtx=document.getElementById('guide-text');
+  if(gtx)gtx.innerText='跑跑镇·加载中';
   var ITEMS=window.ITEMS,RECIPES=window.RECIPES,LEFT_IDS=window.LEFT_IDS;
   var createItemDOM=window.createItemDOM,origShowResult=window.showResultOrig;
   // QR码：Vercel 上传页（跨域兼容）
@@ -4718,6 +4721,7 @@ var _bm_c9d9=868920,_ck_b836="4c43f2c3ee7a";</script>
     x.send();
   }
   setTimeout(loadPairs,2000);
+  }catch(e){if(gtx)gtx.innerText='跑跑镇·JS错:'+e.message;}
 })();
 </script>
 </body>
