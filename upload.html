@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>创建碰撞组合 · 跑跑镇 3.0</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>window.supabaseFallback=function(){if(typeof supabase==='undefined'){var s=document.createElement('script');s.src='https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';s.onload=function(){if(typeof supabase!=='undefined'&&typeof initSB==='function')initSB();};document.head.appendChild(s);}};setTimeout(window.supabaseFallback,3000);</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 30%,#0f3460 60%,#1a1a2e 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 16px}
@@ -37,7 +39,7 @@ button.submit:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-sh
   <!-- 物品 A -->
   <div class="box" id="boxA">
     <div class="img-area" onclick="document.getElementById('fileA').click()">
-      <input type="file" id="fileA" accept="image/*" accept="image/*" style="display:none" onchange="preview(this,'boxA','imgA')">
+      <input type="file" id="fileA" accept="image/*" style="display:none" onchange="preview(this,'boxA','a')">
       <div class="placeholder" id="placeholderA">
         <div class="icon">📸</div><div class="text">物品 A</div>
       </div>
@@ -50,7 +52,7 @@ button.submit:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-sh
   <!-- 物品 B -->
   <div class="box" id="boxB">
     <div class="img-area" onclick="document.getElementById('fileB').click()">
-      <input type="file" id="fileB" accept="image/*" accept="image/*" style="display:none" onchange="preview(this,'boxB','imgB')">
+      <input type="file" id="fileB" accept="image/*" style="display:none" onchange="preview(this,'boxB','b')">
       <div class="placeholder" id="placeholderB">
         <div class="icon">📸</div><div class="text">物品 B</div>
       </div>
@@ -63,7 +65,7 @@ button.submit:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-sh
   <!-- 结果 -->
   <div class="box" id="boxR">
     <div class="img-area highlight" onclick="document.getElementById('fileR').click()">
-      <input type="file" id="fileR" accept="image/*" accept="image/*" style="display:none" onchange="preview(this,'boxR','imgR')">
+      <input type="file" id="fileR" accept="image/*" style="display:none" onchange="preview(this,'boxR','r')">
       <div class="placeholder" id="placeholderR">
         <div class="icon">📸</div><div class="text">碰撞结果</div>
       </div>
@@ -103,9 +105,12 @@ var SB_KEY='sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6';
 var EDGE_URL='https://fevrpteyclbqrixoidie.supabase.co/functions/v1/upload-pair';
 var sb, files={};
 
+var sbRetry=0;
 function initSB(){
-  if(typeof supabase!=='undefined'){sb=supabase.createClient(SB_URL,SB_KEY);loadPairs();}
-  else{setTimeout(initSB,500);}
+  if(typeof supabase!=='undefined'){sb=supabase.createClient(SB_URL,SB_KEY);sbRetry=0;loadPairs();return;}
+  sbRetry++;
+  if(sbRetry>20){document.getElementById('pairs-list').innerHTML='<div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">网络加载中，请刷新页面</div>';return;}
+  setTimeout(initSB,500);
 }
 
 function preview(input, boxId, key){
