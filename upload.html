@@ -77,34 +77,59 @@ var sb,fls={},rty=0;
 })();
 function pv(inp,lid,k){var f=inp.files[0];if(!f)return;fls[k]=f;var lb=document.getElementById(lid);lb.classList.add('has');lb.style.backgroundImage='url('+URL.createObjectURL(f)+')';lb.querySelector('.ph').style.display='none';}
 function mg(t,c){var m=document.getElementById('msg');m.textContent=t;m.className='msg on '+c;}
-// 抠图 + 压缩：洪水填充边缘 + 白底透明化
+// 抠图 + 压缩：自动检测背景色 + Lab色彩距离 + 羽化边缘
 function removeAndCompress(file){return new Promise(function(ok){
   var img=new Image();
   img.onload=function(){
     var maxW=1024;var s=Math.min(1,maxW/img.width);
     var c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;
     var ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
-    var w=c.width,h=c.height;
-    var d=ctx.getImageData(0,0,w,h);
-    var pix=d.data;
-    // 判断是否接近白色
-    function isWhite(i){var r=pix[i],g=pix[i+1],b=pix[i+2];return r>210&&g>210&&b>210&&Math.abs(r-g)<60&&Math.abs(g-b)<60&&Math.abs(r-b)<60;}
-    // 洪水填充：从四边出发，标记连通的背景区域
-    var visited=new Uint8Array(w*h);
-    var stack=[];
-    function push(x,y){if(x>=0&&x<w&&y>=0&&y<h&&!visited[y*w+x]){visited[y*w+x]=1;stack.push(y*w+x);}}
-    // 从四边出发
-    for(var x=0;x<w;x++){if(isWhite(x*4))push(x,0);if(isWhite((x+(h-1)*w)*4))push(x,h-1);}
-    for(var y=0;y<h;y++){if(isWhite(y*w*4))push(0,y);if(isWhite((w-1+y*w)*4))push(w-1,y);}
-    while(stack.length){
-      var idx=stack.pop();
-      var px=idx%w,py=Math.floor(idx/w);
-      var i=idx*4;
-      if(isWhite(i)){
-        pix[i+3]=0; // 变透明
-        push(px-1,py);push(px+1,py);push(px,py-1);push(px,py+1);
+    var w=c.width,h=c.height,d=ctx.getImageData(0,0,w,h),pix=d.data;
+
+    // 1. 自动检测背景色：采样四边像素，取中位数
+    var samples=[];
+    for(var x=0;x<w;x+=5){var i=x*4;samples.push([pix[i],pix[i+1],pix[i+2]]);i=((h-1)*w+x)*4;samples.push([pix[i],pix[i+1],pix[i+2]]);}
+    for(var y=0;y<h;y+=5){var i=y*w*4;samples.push([pix[i],pix[i+1],pix[i+2]]);i=((w-1)+y*w)*4;samples.push([pix[i],pix[i+1],pix[i+2]]);}
+    samples.sort(function(a,b){return (a[0]+a[1]+a[2])-(b[0]+b[1]+b[2]);});
+    var bg=samples[Math.floor(samples.length/2)]; // 中位数背景色
+
+    // 2. RGB→Lab 近似（快速版）
+    function rgb2lab(r,g,b){
+      var vr=(r/255)*2-1,vgb=(g/255)*2-1,vb=(b/255)*2-1;
+      var L=0.2126*r+0.7152*g+0.0722*b;
+      var A=(vr-vgb)*110,B=(vgb-vb)*110;
+      return [L,A,B];
+    }
+    var bgLab=rgb2lab(bg[0],bg[1],bg[2]);
+
+    // 3. 计算每个像素到背景色的Lab距离，超出阈值的保留
+    var tol=40; // 容差
+    var alpha=new Uint8Array(w*h);
+    for(var i=0;i<pix.length;i+=4){
+      var lab=rgb2lab(pix[i],pix[i+1],pix[i+2]);
+      var dL=lab[0]-bgLab[0],dA=lab[1]-bgLab[1],dB=lab[2]-bgLab[2];
+      var dist=Math.sqrt(dL*dL+dA*dA+dB*dB);
+      var idx=i/4;
+      if(dist<tol){alpha[idx]=0;} // 背景→透明
+      else if(dist<tol+15){alpha[idx]=Math.round((dist-tol)/15*255);} // 过渡→半透明
+      else{alpha[idx]=255;} // 前景→不透明
+    }
+
+    // 4. 羽化：3px 高斯模糊 alpha 通道
+    var blurred=new Uint8Array(w*h);
+    for(var y=0;y<h;y++){
+      for(var x=0;x<w;x++){
+        var sum=0,cnt=0;
+        for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){
+          var nx=x+dx,ny=y+dy;
+          if(nx>=0&&nx<w&&ny>=0&&ny<h){sum+=alpha[ny*w+nx];cnt++;}
+        }
+        blurred[y*w+x]=Math.round(sum/cnt);
       }
     }
+
+    // 5. 应用 alpha
+    for(var i=0;i<pix.length;i+=4){pix[i+3]=blurred[i/4];}
     ctx.putImageData(d,0,0);
     c.toBlob(function(b){ok(new File([b],file.name||'img.png',{type:'image/png'}));},'image/png');
   };
