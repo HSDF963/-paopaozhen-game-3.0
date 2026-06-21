@@ -4612,45 +4612,37 @@ var _bm_c9d9=868920,_ck_b836="4c43f2c3ee7a";</script>
 <script type="application/json" data-config="feature-flags">{"experiment_id":"929541","variant":"control"}</script>
 <style data-build="0515f8">._bm_1bcd{display:none}._ck_553d{visibility:hidden}</style>
 <!-- ===== 跑跑镇 3.0 增强：QR码 + 实时上传 ===== -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (function(){
   'use strict';
   var ITEMS=window.ITEMS,RECIPES=window.RECIPES,LEFT_IDS=window.LEFT_IDS;
   var createItemDOM=window.createItemDOM,origShowResult=window.showResultOrig;
+  // QR码：Vercel 上传页（跨域兼容）
+  var UPLOAD_URL=(window.location.hostname==='paopaozhen-game-3-0.vercel.app')
+    ? window.location.origin+'/upload.html'
+    : 'https://paopaozhen-game-3-0.vercel.app/upload.html';
 
-  // QR码生成函数
-  function generateQR(){
-    var c=document.getElementById('qr-canvas');
-    if(!c)return;
-    var url=window.location.origin+'/upload.html';
-    var w=parseInt(c.style.width)||c.width||36;
-    if(typeof QRCode!=='undefined'){
-      QRCode.toCanvas(c,url,{width:w,margin:1,color:{dark:'#1a1a2e',light:'#ffffff'}},function(){});
-    }else{
-      var ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,w);
-      ctx.fillStyle='#1a1a2e';ctx.font='bold '+(w>80?14:7)+'px sans-serif';ctx.textAlign='center';
-      ctx.fillText('扫码',w/2,w/2-2);ctx.fillText('上传',w/2,w/2+10);
-    }
-  }
-
-  // QR码插入到标题左边
+  // QR码：使用 api.qrserver.com 生成图片，零 CDN 依赖
   (function insertQR(){
     var tb=document.getElementById('title-bar');
     if(!tb)return;
     var w=document.createElement('div');
     w.id='qr-corner';
     w.style.cssText='display:flex;align-items:center;cursor:pointer;margin-right:16px';
-    w.innerHTML='<canvas id="qr-canvas" width="36" height="36" style="border-radius:6px;background:#fff;padding:2px;box-shadow:0 2px 8px rgba(0,0,0,0.25)"></canvas>';
+    var qrImg=document.createElement('img');
+    qrImg.width=36;qrImg.height=36;
+    qrImg.style.cssText='border-radius:6px;background:#fff;padding:2px;box-shadow:0 2px 8px rgba(0,0,0,0.25)';
+    qrImg.src='https://api.qrserver.com/v1/create-qr-code/?size=100x100&data='+encodeURIComponent(UPLOAD_URL);
+    qrImg.onerror=function(){this.style.display='none';};
+    w.appendChild(qrImg);
     w.onclick=function(){
-      var c=this.querySelector('canvas');
-      if(c.style.width==='120px'){c.style.width='36px';c.style.height='36px';}
-      else{c.style.width='120px';c.style.height='120px';}
-      generateQR();
+      var img=this.querySelector('img');
+      if(!img)return;
+      if(img.width===120){img.width=36;img.height=36;}
+      else{img.width=120;img.height=120;img.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(UPLOAD_URL);}
     };
     tb.insertBefore(w,tb.firstChild);
-    setTimeout(generateQR,300);
   })();
 
   // 语音合成
