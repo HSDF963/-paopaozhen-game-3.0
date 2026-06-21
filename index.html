@@ -4644,12 +4644,21 @@ var _bm_c9d9=868920,_ck_b836="4c43f2c3ee7a";</script>
     tb.insertBefore(w,tb.firstChild);
   })();
 
-  // 语音合成
+  // 语音合成（匹配原游戏预设音色）
   var sp=window.speechSynthesis;
+  var zhVoice=null;
+  function getZhVoice(){
+    if(zhVoice)return zhVoice;
+    var vs=sp.getVoices();
+    zhVoice=vs.find(function(v){return v.lang==='zh-CN';})||vs.find(function(v){return v.lang.startsWith('zh');})||null;
+    return zhVoice;
+  }
+  sp.onvoiceschanged=function(){zhVoice=null;getZhVoice();};
   function speak(txt){
     if(!sp)return;sp.cancel();
     var u=new SpeechSynthesisUtterance(txt);
-    u.lang='zh-CN';u.rate=0.85;u.pitch=1.1;u.volume=0.9;
+    u.lang='zh-CN';u.rate=0.82;u.pitch=1.15;u.volume=1.0;
+    var v=getZhVoice();if(v)u.voice=v;
     sp.speak(u);
   }
 
