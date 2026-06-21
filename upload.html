@@ -42,19 +42,19 @@ button.go:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-shadow
 <div class="row">
   <div class="ubox">
     <label for="fA" id="lbA"><div class="ph"><div class="ic">📸</div><div class="tx">物品 A</div></div></label>
-    <input type="file" id="fA" onchange="pv(this,'lbA','a')">
+    <input type="file" id="fA" accept="image/*" onchange="pv(this,'lbA','a')">
     <input type="text" id="nA" placeholder="物品A 名称">
   </div>
   <div class="plus">+</div>
   <div class="ubox">
     <label for="fB" id="lbB"><div class="ph"><div class="ic">📸</div><div class="tx">物品 B</div></div></label>
-    <input type="file" id="fB" onchange="pv(this,'lbB','b')">
+    <input type="file" id="fB" accept="image/*" onchange="pv(this,'lbB','b')">
     <input type="text" id="nB" placeholder="物品B 名称">
   </div>
   <div class="plus">=</div>
   <div class="ubox">
     <label for="fR" id="lbR" class="hl"><div class="ph"><div class="ic">📸</div><div class="tx">碰撞结果</div></div></label>
-    <input type="file" id="fR" onchange="pv(this,'lbR','r')">
+    <input type="file" id="fR" accept="image/*" onchange="pv(this,'lbR','r')">
     <input type="text" id="nR" placeholder="结果 名称">
   </div>
 </div>
