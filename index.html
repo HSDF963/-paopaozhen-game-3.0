@@ -4612,7 +4612,7 @@ var _bm_c9d9=868920,_ck_b836="4c43f2c3ee7a";</script>
 <script type="application/json" data-config="feature-flags">{"experiment_id":"929541","variant":"control"}</script>
 <style data-build="0515f8">._bm_1bcd{display:none}._ck_553d{visibility:hidden}</style>
 <!-- ===== 跑跑镇 3.0 增强：QR码 + 实时上传 ===== -->
-<script src="supabase-client.js"></script>
+<!-- Supabase 改用原生 fetch，零依赖 -->
 <script>
 (function(){
   'use strict';
@@ -4690,19 +4690,19 @@ var _bm_c9d9=868920,_ck_b836="4c43f2c3ee7a";</script>
     };
   }
 
-  // Supabase 实时订阅
-  if(typeof supabase!=='undefined'){
-    var sb=supabase.createClient('https://fevrpteyclbqrixoidie.supabase.co','sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6');
-    // 加载已有配对
-    sb.from('custom_pairs').select('*').order('created_at',{ascending:true}).then(function(r){
-      if(r.data&&r.data.length){console.log('📥 加载'+r.data.length+'个自定义配对');r.data.forEach(function(p){window.addCustomPair(p,false);});}
-    }).catch(function(e){console.warn('加载自定义配对失败:',e);});
-    // 实时订阅
-    sb.channel('cp-'+Date.now()).on('postgres_changes',{event:'INSERT',schema:'public',table:'custom_pairs'},function(p){
-      console.log('📨 Realtime收到新配对:',p.new.id);
-      window.addCustomPair(p.new,true);
-    }).subscribe(function(status){console.log('🔌 Supabase Realtime:',status);});
+  // 原生 fetch 调用 Supabase REST API（零依赖，手机可访问）
+  var SBU='https://fevrpteyclbqrixoidie.supabase.co';
+  var SBK='sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6';
+  var H={apikey:SBK,Authorization:'Bearer '+SBK,'Content-Type':'application/json'};
+  var known={};
+  function sbGet(path){return fetch(SBU+'/rest/v1/'+path,{headers:H}).then(function(r){return r.json();});}
+  function loadAndPoll(){
+    sbGet('custom_pairs?select=*&order=created_at.asc').then(function(d){
+      if(Array.isArray(d)&&d.length){d.forEach(function(p){if(!known[p.id]){known[p.id]=true;window.addCustomPair(p,false);}});}
+    }).catch(function(e){});
+    setTimeout(loadAndPoll,8000);
   }
+  setTimeout(loadAndPoll,2000);
 })();
 </script>
 </body>
