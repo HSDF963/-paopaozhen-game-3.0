@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>创建碰撞组合 · 跑跑镇 3.0</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 30%,#0f3460 60%,#1a1a2e 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 16px}
+h1{color:#FFD54F;font-size:clamp(20px,5vw,28px);text-shadow:0 2px 12px rgba(255,213,79,0.4);margin-top:20px;margin-bottom:4px;text-align:center}
+.subtitle{color:rgba(255,255,255,0.65);font-size:13px;margin-bottom:20px;text-align:center;line-height:1.6}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:700px;width:100%}
+.box{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;max-width:190px}
+.box .img-area{width:100%;aspect-ratio:1;border:3px dashed rgba(255,255,255,0.4);border-radius:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,0.08);overflow:hidden;transition:all 0.2s}
+.box .img-area.highlight{border-color:#FFD54F;box-shadow:0 0 20px rgba(255,213,79,0.3)}
+.box .img-area.has-img{border-style:solid;border-color:rgba(76,175,80,0.6);background-size:contain;background-position:center;background-repeat:no-repeat}
+.box .img-area .placeholder{text-align:center;color:rgba(255,255,255,0.6)}
+.box .img-area .placeholder .icon{font-size:36px}
+.box .img-area .placeholder .text{font-size:12px;font-weight:600;margin-top:4px}
+.box input{width:100%;padding:10px 12px;border-radius:12px;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#FFF;font-size:14px;font-weight:600;text-align:center;outline:none}
+.plus{color:#FFD54F;font-size:28px;font-weight:900;text-shadow:0 0 10px rgba(255,213,79,0.5)}
+button.submit{margin-top:28px;padding:16px 48px;border-radius:50px;border:none;background:linear-gradient(135deg,#FF9800,#F44336);color:#FFF;font-size:18px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(255,152,0,0.5);letter-spacing:2px}
+button.submit:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-shadow:none;cursor:not-allowed}
+.msg{margin-top:20px;padding:14px 20px;border-radius:16px;max-width:500px;width:100%;font-size:14px;text-align:center;display:none}
+.msg.show{display:block}
+.msg.ok{background:rgba(76,175,80,0.2);border:2px solid rgba(76,175,80,0.5);color:#81C784}
+.msg.err{background:rgba(244,67,54,0.2);border:2px solid rgba(244,67,54,0.5);color:#EF9A9A}
+.footer{margin-top:auto;padding-top:30px;font-size:11px;color:rgba(255,255,255,0.35);text-align:center}
+</style>
+</head>
+<body>
+
+<h1>✨ 创建你的碰撞组合</h1>
+<p class="subtitle">拍摄或上传三张图片：两个碰撞物品 + 一个合成结果</p>
+
+<div class="row">
+  <!-- 物品 A -->
+  <div class="box" id="boxA">
+    <div class="img-area" onclick="document.getElementById('fileA').click()">
+      <input type="file" id="fileA" accept="image/*" capture="environment" style="display:none" onchange="preview(this,'boxA','imgA')">
+      <div class="placeholder" id="placeholderA">
+        <div class="icon">📸</div><div class="text">物品 A</div>
+      </div>
+    </div>
+    <input type="text" id="nameA" placeholder="物品A 名称">
+  </div>
+
+  <div class="plus">+</div>
+
+  <!-- 物品 B -->
+  <div class="box" id="boxB">
+    <div class="img-area" onclick="document.getElementById('fileB').click()">
+      <input type="file" id="fileB" accept="image/*" capture="environment" style="display:none" onchange="preview(this,'boxB','imgB')">
+      <div class="placeholder" id="placeholderB">
+        <div class="icon">📸</div><div class="text">物品 B</div>
+      </div>
+    </div>
+    <input type="text" id="nameB" placeholder="物品B 名称">
+  </div>
+
+  <div class="plus">=</div>
+
+  <!-- 结果 -->
+  <div class="box" id="boxR">
+    <div class="img-area highlight" onclick="document.getElementById('fileR').click()">
+      <input type="file" id="fileR" accept="image/*" capture="environment" style="display:none" onchange="preview(this,'boxR','imgR')">
+      <div class="placeholder" id="placeholderR">
+        <div class="icon">📸</div><div class="text">碰撞结果</div>
+      </div>
+    </div>
+    <input type="text" id="nameR" placeholder="结果 名称">
+  </div>
+</div>
+
+<button class="submit" id="submitBtn" onclick="doUpload()">🚀 上传碰撞组合</button>
+
+<div class="msg" id="msg"></div>
+
+<!-- 已上传内容管理面板 -->
+<div class="panel" id="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h2 style="color:#FFD54F;font-size:18px;margin:0">📋 已上传的碰撞组合</h2>
+    <button class="btn-clear" onclick="clearAll()">🗑 清除全部</button>
+  </div>
+  <div id="pairs-list" style="max-height:300px;overflow-y:auto;scrollbar-width:thin">
+    <div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">加载中…</div>
+  </div>
+</div>
+
+<div class="footer">💡 上传后在大屏游戏页面刷新即可看到新碰撞组合</div>
+
+<style>
+.panel{max-width:550px;width:100%;margin-top:24px;background:rgba(255,255,255,0.05);border-radius:16px;padding:16px}
+.btn-clear{background:#c62828;color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:12px;cursor:pointer}
+.pair-row{display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:6px;flex-wrap:wrap}
+.pair-row span{color:#fff;font-size:13px;font-weight:600}
+.pair-row button.del{background:#c62828;color:#fff;border:none;border-radius:8px;padding:4px 12px;font-size:11px;cursor:pointer;margin-left:auto}
+</style>
+
+<script>
+var files = {};
+
+function preview(input, boxId, key){
+  var f = input.files?.[0];
+  if(!f) return;
+  files[key] = f;
+  var area = document.querySelector('#'+boxId+' .img-area');
+  var ph = document.querySelector('#'+boxId+' .placeholder');
+  area.classList.add('has-img');
+  area.style.backgroundImage = 'url('+URL.createObjectURL(f)+')';
+  if(ph) ph.style.display = 'none';
+}
+
+function showMsg(text, type){
+  var m = document.getElementById('msg');
+  m.textContent = text;
+  m.className = 'msg show ' + type;
+}
+
+async function doUpload(){
+  var btn = document.getElementById('submitBtn');
+  var fileA = files['imgA'], fileB = files['imgB'], fileR = files['imgR'];
+  var nameA = document.getElementById('nameA').value.trim();
+  var nameB = document.getElementById('nameB').value.trim();
+  var nameR = document.getElementById('nameR').value.trim();
+
+  if(!fileA || !fileB || !fileR){showMsg('❌ 请上传三张图片','err');return;}
+  if(!nameA || !nameB || !nameR){showMsg('❌ 请填写三个物品的名称','err');return;}
+
+  btn.disabled = true;
+  btn.textContent = '正在处理中…';
+  showMsg('⏳ 正在处理…','info');
+
+  try{
+    var form = new FormData();
+    form.append('itemAImage', fileA); form.append('itemAName', nameA);
+    form.append('itemBImage', fileB); form.append('itemBName', nameB);
+    form.append('resultImage', fileR); form.append('resultName', nameR);
+
+    var res = await fetch('/api/upload', {method:'POST', body:form});
+    var data = await res.json();
+
+    if(!res.ok) throw new Error(data.error || '上传失败');
+
+    showMsg('🎉 上传成功！游戏大屏已实时收到新组合！', 'ok');
+
+    ['A','B','R'].forEach(function(k){
+      var area = document.querySelector('#box'+k+' .img-area');
+      area.classList.remove('has-img');
+      area.style.backgroundImage = '';
+      var ph = document.querySelector('#placeholder'+k);
+      if(ph) ph.style.display = '';
+    });
+    document.getElementById('nameA').value = '';
+    document.getElementById('nameB').value = '';
+    document.getElementById('nameR').value = '';
+    files = {};
+    loadPairs();
+  }catch(e){
+    showMsg('❌ ' + e.message, 'err');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = '🚀 上传碰撞组合';
+  }
+}
+
+// ===== 管理功能（全局作用域） =====
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+async function loadPairs(){
+  var list=document.getElementById('pairs-list');
+  if(!list)return;
+  try{
+    var res=await fetch('/api/pairs');
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    if(!data.length){list.innerHTML='<div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">暂无上传内容</div>';return;}
+    list.innerHTML=data.map(function(p){
+      return '<div class="pair-row" id="row-'+p.id+'">'+
+        '<span>'+esc(p.item_a_name)+'</span><span style="color:#FFD54F">+</span>'+
+        '<span>'+esc(p.item_b_name)+'</span><span style="color:#FFD54F">=</span>'+
+        '<span style="color:#81C784">'+esc(p.result_name)+'</span>'+
+        '<button class="del" onclick="delPair(\''+p.id+'\')">🗑 删除</button>'+
+        '</div>';
+    }).join('');
+  }catch(e){list.innerHTML='<div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">加载失败，请刷新页面</div>';}
+}
+
+async function delPair(id){
+  if(!confirm('确定删除这条碰撞组合？'))return;
+  await fetch('/api/pairs/'+id, {method:'DELETE'});
+  loadPairs();
+}
+
+async function clearAll(){
+  if(!confirm('确定清除全部上传内容？此操作不可撤销！'))return;
+  await fetch('/api/pairs', {method:'DELETE'});
+  loadPairs();
+}
+
+// 页面加载时立即获取已上传列表
+loadPairs();
+</script>
+</body>
+</html>
