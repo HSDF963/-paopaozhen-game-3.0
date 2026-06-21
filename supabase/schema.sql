@@ -15,4 +15,5 @@ CREATE TABLE IF NOT EXISTS custom_pairs (
 ALTER TABLE custom_pairs ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN CREATE POLICY allow_public_select ON custom_pairs FOR SELECT USING (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY allow_public_insert ON custom_pairs FOR INSERT WITH CHECK (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY allow_public_delete ON custom_pairs FOR DELETE USING (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 ALTER PUBLICATION supabase_realtime ADD TABLE custom_pairs;
