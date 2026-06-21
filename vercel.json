@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "framework": null,
+  "functions": {
+    "api/upload.js": { "memory": 512, "maxDuration": 30 },
+    "api/pairs.js": { "memory": 256 },
+    "api/pairs/[id].js": { "memory": 256 }
+  }
+}
