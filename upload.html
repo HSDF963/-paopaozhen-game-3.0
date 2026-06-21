@@ -1,222 +1,118 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>创建碰撞组合 · 跑跑镇 3.0</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script>window.supabaseFallback=function(){if(typeof supabase==='undefined'){var s=document.createElement('script');s.src='https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';s.onload=function(){if(typeof supabase!=='undefined'&&typeof initSB==='function')initSB();};document.head.appendChild(s);}};setTimeout(window.supabaseFallback,3000);</script>
+<script src="supabase-client.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 30%,#0f3460 60%,#1a1a2e 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 16px}
-h1{color:#FFD54F;font-size:clamp(20px,5vw,28px);text-shadow:0 2px 12px rgba(255,213,79,0.4);margin-top:20px;margin-bottom:4px;text-align:center}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460,#1a1a2e);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 16px}
+h1{color:#FFD54F;font-size:clamp(20px,5vw,28px);text-shadow:0 2px 12px rgba(255,213,79,0.4);margin:20px 0 4px;text-align:center}
 .subtitle{color:rgba(255,255,255,0.65);font-size:13px;margin-bottom:20px;text-align:center;line-height:1.6}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:700px;width:100%}
-.box{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;max-width:190px}
-.box .img-area{width:100%;aspect-ratio:1;border:3px dashed rgba(255,255,255,0.4);border-radius:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,0.08);overflow:hidden;transition:all 0.2s}
-.box .img-area.highlight{border-color:#FFD54F;box-shadow:0 0 20px rgba(255,213,79,0.3)}
-.box .img-area.has-img{border-style:solid;border-color:rgba(76,175,80,0.6);background-size:contain;background-position:center;background-repeat:no-repeat}
-.box .img-area .placeholder{text-align:center;color:rgba(255,255,255,0.6)}
-.box .img-area .placeholder .icon{font-size:36px}
-.box .img-area .placeholder .text{font-size:12px;font-weight:600;margin-top:4px}
-.box input{width:100%;padding:10px 12px;border-radius:12px;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#FFF;font-size:14px;font-weight:600;text-align:center;outline:none}
+.ubox{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;max-width:190px}
+.ubox label{width:100%;aspect-ratio:1;border:3px dashed rgba(255,255,255,0.4);border-radius:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,0.08);overflow:hidden;transition:all 0.2s}
+.ubox label.has{border-style:solid;border-color:rgba(76,175,80,0.6);background-size:contain;background-position:center;background-repeat:no-repeat}
+.ubox label.hl{border-color:#FFD54F;box-shadow:0 0 20px rgba(255,213,79,0.3)}
+.ubox label .ph{text-align:center;color:rgba(255,255,255,0.6)}
+.ubox label .ph .ic{font-size:36px}
+.ubox label .ph .tx{font-size:12px;font-weight:600;margin-top:4px}
+.ubox input[type=text]{width:100%;padding:10px 12px;border-radius:12px;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#FFF;font-size:14px;font-weight:600;text-align:center;outline:none}
+.ubox input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .plus{color:#FFD54F;font-size:28px;font-weight:900;text-shadow:0 0 10px rgba(255,213,79,0.5)}
-button.submit{margin-top:28px;padding:16px 48px;border-radius:50px;border:none;background:linear-gradient(135deg,#FF9800,#F44336);color:#FFF;font-size:18px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(255,152,0,0.5);letter-spacing:2px}
-button.submit:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-shadow:none;cursor:not-allowed}
+button.go{margin-top:28px;padding:16px 48px;border-radius:50px;border:none;background:linear-gradient(135deg,#FF9800,#F44336);color:#FFF;font-size:18px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(255,152,0,0.5);letter-spacing:2px}
+button.go:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-shadow:none;cursor:not-allowed}
 .msg{margin-top:20px;padding:14px 20px;border-radius:16px;max-width:500px;width:100%;font-size:14px;text-align:center;display:none}
-.msg.show{display:block}
+.msg.on{display:block}
 .msg.ok{background:rgba(76,175,80,0.2);border:2px solid rgba(76,175,80,0.5);color:#81C784}
-.msg.err{background:rgba(244,67,54,0.2);border:2px solid rgba(244,67,54,0.5);color:#EF9A9A}
-.footer{margin-top:auto;padding-top:30px;font-size:11px;color:rgba(255,255,255,0.35);text-align:center}
+.msg.er{background:rgba(244,67,54,0.2);border:2px solid rgba(244,67,54,0.5);color:#EF9A9A}
+.msg.in{background:rgba(33,150,243,0.2);border:2px solid rgba(33,150,243,0.5);color:#90CAF9}
+.panel{max-width:550px;width:100%;margin-top:24px;background:rgba(255,255,255,0.05);border-radius:16px;padding:16px}
+.btn-clr{background:#c62828;color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:12px;cursor:pointer}
+.prow{display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:6px;flex-wrap:wrap}
+.prow span{color:#fff;font-size:13px;font-weight:600}
+.prow button.del{background:#c62828;color:#fff;border:none;border-radius:8px;padding:4px 12px;font-size:11px;cursor:pointer;margin-left:auto}
+.ft{margin-top:auto;padding-top:30px;font-size:11px;color:rgba(255,255,255,0.35);text-align:center}
 </style>
 </head>
 <body>
-
 <h1>✨ 创建你的碰撞组合</h1>
 <p class="subtitle">拍摄或上传三张图片：两个碰撞物品 + 一个合成结果</p>
-
 <div class="row">
-  <!-- 物品 A -->
-  <div class="box" id="boxA">
-    <div class="img-area" onclick="document.getElementById('fileA').click()">
-      <input type="file" id="fileA" accept="image/*" style="display:none" onchange="preview(this,'boxA','a')">
-      <div class="placeholder" id="placeholderA">
-        <div class="icon">📸</div><div class="text">物品 A</div>
-      </div>
-    </div>
-    <input type="text" id="nameA" placeholder="物品A 名称">
+  <div class="ubox">
+    <label for="fA" id="lbA"><div class="ph"><div class="ic">📸</div><div class="tx">物品 A</div></div></label>
+    <input type="file" id="fA" onchange="pv(this,'lbA','a')">
+    <input type="text" id="nA" placeholder="物品A 名称">
   </div>
-
   <div class="plus">+</div>
-
-  <!-- 物品 B -->
-  <div class="box" id="boxB">
-    <div class="img-area" onclick="document.getElementById('fileB').click()">
-      <input type="file" id="fileB" accept="image/*" style="display:none" onchange="preview(this,'boxB','b')">
-      <div class="placeholder" id="placeholderB">
-        <div class="icon">📸</div><div class="text">物品 B</div>
-      </div>
-    </div>
-    <input type="text" id="nameB" placeholder="物品B 名称">
+  <div class="ubox">
+    <label for="fB" id="lbB"><div class="ph"><div class="ic">📸</div><div class="tx">物品 B</div></div></label>
+    <input type="file" id="fB" onchange="pv(this,'lbB','b')">
+    <input type="text" id="nB" placeholder="物品B 名称">
   </div>
-
   <div class="plus">=</div>
-
-  <!-- 结果 -->
-  <div class="box" id="boxR">
-    <div class="img-area highlight" onclick="document.getElementById('fileR').click()">
-      <input type="file" id="fileR" accept="image/*" style="display:none" onchange="preview(this,'boxR','r')">
-      <div class="placeholder" id="placeholderR">
-        <div class="icon">📸</div><div class="text">碰撞结果</div>
-      </div>
-    </div>
-    <input type="text" id="nameR" placeholder="结果 名称">
+  <div class="ubox">
+    <label for="fR" id="lbR" class="hl"><div class="ph"><div class="ic">📸</div><div class="tx">碰撞结果</div></div></label>
+    <input type="file" id="fR" onchange="pv(this,'lbR','r')">
+    <input type="text" id="nR" placeholder="结果 名称">
   </div>
 </div>
-
-<button class="submit" id="submitBtn" onclick="doUpload()">🚀 上传碰撞组合</button>
-
+<button class="go" id="btnGo" onclick="up()">🚀 上传碰撞组合</button>
 <div class="msg" id="msg"></div>
-
-<!-- 已上传内容管理面板 -->
-<div class="panel" id="panel">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-    <h2 style="color:#FFD54F;font-size:18px;margin:0">📋 已上传的碰撞组合</h2>
-    <button class="btn-clear" onclick="clearAll()">🗑 清除全部</button>
-  </div>
-  <div id="pairs-list" style="max-height:300px;overflow-y:auto;scrollbar-width:thin">
-    <div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">加载中…</div>
-  </div>
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="color:#FFD54F;font-size:18px;margin:0">📋 已上传的碰撞组合</h2><button class="btn-clr" onclick="clr()">🗑 清除全部</button></div>
+  <div id="list" style="max-height:300px;overflow-y:auto;scrollbar-width:thin"><div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">加载中…</div></div>
 </div>
-
-<div class="footer">💡 上传后在大屏游戏页面刷新即可看到新碰撞组合</div>
-
-<style>
-.panel{max-width:550px;width:100%;margin-top:24px;background:rgba(255,255,255,0.05);border-radius:16px;padding:16px}
-.btn-clear{background:#c62828;color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:12px;cursor:pointer}
-.pair-row{display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:6px;flex-wrap:wrap}
-.pair-row span{color:#fff;font-size:13px;font-weight:600}
-.pair-row button.del{background:#c62828;color:#fff;border:none;border-radius:8px;padding:4px 12px;font-size:11px;cursor:pointer;margin-left:auto}
-</style>
-
+<div class="ft">💡 上传后在大屏游戏页面刷新即可看到新碰撞组合</div>
 <script>
-var SB_URL='https://fevrpteyclbqrixoidie.supabase.co';
-var SB_KEY='sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6';
-var EDGE_URL='https://fevrpteyclbqrixoidie.supabase.co/functions/v1/upload-pair';
-var sb, files={};
-
-var sbRetry=0;
-function initSB(){
-  if(typeof supabase!=='undefined'){sb=supabase.createClient(SB_URL,SB_KEY);sbRetry=0;loadPairs();return;}
-  sbRetry++;
-  if(sbRetry>20){document.getElementById('pairs-list').innerHTML='<div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">网络加载中，请刷新页面</div>';return;}
-  setTimeout(initSB,500);
-}
-
-function preview(input, boxId, key){
-  var f=input.files?.[0];
-  if(!f)return;
-  files[key]=f;
-  var area = document.querySelector('#'+boxId+' .img-area');
-  var ph = document.querySelector('#'+boxId+' .placeholder');
-  area.classList.add('has-img');
-  area.style.backgroundImage = 'url('+URL.createObjectURL(f)+')';
-  if(ph) ph.style.display = 'none';
-}
-
-function showMsg(text, type){
-  var m = document.getElementById('msg');
-  m.textContent = text;
-  m.className = 'msg show ' + type;
-}
-
-async function doUpload(){
-  var btn = document.getElementById('submitBtn');
-  var fileA = files['a'], fileB = files['b'], fileR = files['r'];
-  var nameA = document.getElementById('nameA').value.trim();
-  var nameB = document.getElementById('nameB').value.trim();
-  var nameR = document.getElementById('nameR').value.trim();
-
-  if(!fileA || !fileB || !fileR){showMsg('❌ 请上传三张图片','err');return;}
-  if(!nameA || !nameB || !nameR){showMsg('❌ 请填写三个物品的名称','err');return;}
-
-  btn.disabled = true;
-  btn.textContent = '正在处理中…';
-  showMsg('⏳ 正在处理…','info');
-
+var S='https://fevrpteyclbqrixoidie.supabase.co';
+var K='sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6';
+var E='https://fevrpteyclbqrixoidie.supabase.co/functions/v1/upload-pair';
+var sb,fls={},rty=0;
+(function init(){
+  if(typeof supabase!=='undefined'){sb=supabase.createClient(S,K);ld();return;}
+  rty++;if(rty>30){document.getElementById('list').innerHTML='<div style="color:#ff8a80;text-align:center;padding:20px">网络异常，请用 WiFi 并刷新</div>';return;}
+  setTimeout(init,1000);
+})();
+function pv(inp,lid,k){var f=inp.files[0];if(!f)return;fls[k]=f;var lb=document.getElementById(lid);lb.classList.add('has');lb.style.backgroundImage='url('+URL.createObjectURL(f)+')';lb.querySelector('.ph').style.display='none';}
+function mg(t,c){var m=document.getElementById('msg');m.textContent=t;m.className='msg on '+c;}
+async function up(){
+  var fA=fls['a'],fB=fls['b'],fR=fls['r'];
+  var nA=document.getElementById('nA').value.trim();
+  var nB=document.getElementById('nB').value.trim();
+  var nR=document.getElementById('nR').value.trim();
+  if(!fA||!fB||!fR){mg('请选择三张图片','er');return;}
+  if(!nA||!nB||!nR){mg('请填写三个名称','er');return;}
+  var b=document.getElementById('btnGo');b.disabled=true;b.textContent='处理中…';
+  mg('抠图+上传中…','in');
   try{
-    var form = new FormData();
-    form.append('itemAImage', fileA); form.append('itemAName', nameA);
-    form.append('itemBImage', fileB); form.append('itemBName', nameB);
-    form.append('resultImage', fileR); form.append('resultName', nameR);
-
-    // 调用 Supabase Edge Function（supabase.co 国内可访问）
-    var res = await fetch('https://fevrpteyclbqrixoidie.supabase.co/functions/v1/upload-pair', {
-      method:'POST', body:form,
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-    });
-    var data = await res.json();
-
-    if(!res.ok) throw new Error(data.error || '上传失败');
-
-    showMsg('🎉 上传成功！游戏大屏已实时收到新组合！', 'ok');
-
-    ['A','B','R'].forEach(function(k){
-      var area = document.querySelector('#box'+k+' .img-area');
-      area.classList.remove('has-img');
-      area.style.backgroundImage = '';
-      var ph = document.querySelector('#placeholder'+k);
-      if(ph) ph.style.display = '';
-    });
-    document.getElementById('nameA').value = '';
-    document.getElementById('nameB').value = '';
-    document.getElementById('nameR').value = '';
-    files = {};
-    loadPairs();
-  }catch(e){
-    showMsg('❌ ' + e.message, 'err');
-  }finally{
-    btn.disabled = false;
-    btn.textContent = '🚀 上传碰撞组合';
-  }
+    var fm=new FormData();
+    fm.append('itemAImage',fA);fm.append('itemAName',nA);
+    fm.append('itemBImage',fB);fm.append('itemBName',nB);
+    fm.append('resultImage',fR);fm.append('resultName',nR);
+    var rs=await fetch(E,{method:'POST',body:fm,headers:{apikey:K,Authorization:'Bearer '+K}});
+    var dt=await rs.json();
+    if(!rs.ok)throw new Error(dt.error||'上传失败');
+    mg('上传成功！','ok');
+    ['a','b','r'].forEach(function(k){fls[k]=null;var lb=document.getElementById('lb'+k.toUpperCase());lb.classList.remove('has');lb.style.backgroundImage='';lb.querySelector('.ph').style.display='';});
+    document.getElementById('nA').value='';document.getElementById('nB').value='';document.getElementById('nR').value='';
+    ld();
+  }catch(e){mg(e.message,'er');}
+  finally{b.disabled=false;b.textContent='上传碰撞组合';}
 }
-
-// ===== 管理功能（全局作用域） =====
-function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-async function loadPairs(){
-  var list=document.getElementById('pairs-list');
-  if(!list)return;
+function es(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+async function ld(){
+  var ls=document.getElementById('list');if(!ls||!sb)return;
   try{
-    var res=await fetch('/api/pairs');
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    var data=await res.json();
-    if(!data.length){list.innerHTML='<div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">暂无上传内容</div>';return;}
-    list.innerHTML=data.map(function(p){
-      return '<div class="pair-row" id="row-'+p.id+'">'+
-        '<span>'+esc(p.item_a_name)+'</span><span style="color:#FFD54F">+</span>'+
-        '<span>'+esc(p.item_b_name)+'</span><span style="color:#FFD54F">=</span>'+
-        '<span style="color:#81C784">'+esc(p.result_name)+'</span>'+
-        '<button class="del" onclick="delPair(\''+p.id+'\')">🗑 删除</button>'+
-        '</div>';
-    }).join('');
-  }catch(e){list.innerHTML='<div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">加载失败，请刷新页面</div>';}
+    var r=await sb.from('custom_pairs').select('*').order('created_at',{ascending:false});
+    if(r.error)throw r.error;
+    if(!r.data.length){ls.innerHTML='<div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">暂无上传内容</div>';return;}
+    ls.innerHTML=r.data.map(function(p){return '<div class="prow"><span>'+es(p.item_a_name)+'</span><span style="color:#FFD54F">+</span><span>'+es(p.item_b_name)+'</span><span style="color:#FFD54F">=</span><span style="color:#81C784">'+es(p.result_name)+'</span><button class="del" onclick="dl(\''+p.id+'\')">删除</button></div>';}).join('');
+  }catch(e){ls.innerHTML='<div style="color:#ff8a80;text-align:center;padding:20px">加载失败，请刷新</div>';}
 }
-
-async function delPair(id){
-  if(!confirm('确定删除这条碰撞组合？'))return;
-  await fetch('/api/pairs/'+id, {method:'DELETE'});
-  loadPairs();
-}
-
-async function clearAll(){
-  if(!confirm('确定清除全部上传内容？此操作不可撤销！'))return;
-  await fetch('/api/pairs', {method:'DELETE'});
-  loadPairs();
-}
-
-// 页面加载时初始化 Supabase 并加载列表
-initSB();
+async function dl(id){if(!confirm('确定删除？'))return;if(!sb)return;await sb.from('custom_pairs').delete().eq('id',id);ld();}
+async function clr(){if(!confirm('确定清除全部？'))return;if(!sb)return;await sb.from('custom_pairs').delete().neq('id','00000000-0000-0000-0000-000000000000');ld();}
 </script>
 </body>
 </html>
