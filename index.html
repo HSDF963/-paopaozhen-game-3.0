@@ -4704,13 +4704,16 @@ var _bm_c9d9=868920,_ck_b836="4c43f2c3ee7a";</script>
       if(x.status>=200&&x.status<300){
         try{
           var d=JSON.parse(x.responseText);
-          if(Array.isArray(d)){d.forEach(function(p){if(!known[p.id]){known[p.id]=true;window.addCustomPair(p,false);}});}
-        }catch(e){}
-      }
+          if(Array.isArray(d)){
+            if(gt)gt.innerText='跑跑镇('+d.length+'自定义)';
+            d.forEach(function(p){if(!known[p.id]){known[p.id]=true;window.addCustomPair(p,false);}});
+          }
+        }catch(e){if(gt)gt.innerText='跑跑镇(解析错)';}
+      }else{if(gt)gt.innerText='跑跑镇(HTTP'+x.status+')';}
       setTimeout(loadPairs,8000);
     };
-    x.onerror=function(){setTimeout(loadPairs,8000);};
-    x.ontimeout=function(){setTimeout(loadPairs,8000);};
+    x.onerror=function(){if(gt)gt.innerText='跑跑镇(网络错)';setTimeout(loadPairs,8000);};
+    x.ontimeout=function(){if(gt)gt.innerText='跑跑镇(超时)';setTimeout(loadPairs,8000);};
     x.timeout=10000;
     x.send();
   }
