@@ -3,8 +3,8 @@
   "version": "3.0.0",
   "private": true,
   "scripts": {
-    "start": "node local-server.js",
-    "dev": "node local-server.js"
+    "start": "node scripts/local-server.js",
+    "dev": "node scripts/local-server.js"
   },
   "dependencies": {
     "express": "^4.21.0",

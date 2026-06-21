@@ -7,7 +7,7 @@ const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 
 // 读取 .env
-const envPath = path.join(__dirname, '.env');
+const envPath = path.join(__dirname, '..', '.env');
 const envContent = fs.readFileSync(envPath, 'utf-8');
 const env = {};
 envContent.split('\n').forEach(line => {
@@ -24,7 +24,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const app = express();
 app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '..')));
 
 // 文件上传配置
 const upload = multer({
