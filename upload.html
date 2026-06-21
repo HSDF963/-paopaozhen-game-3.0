@@ -138,7 +138,10 @@ async function doUpload(){
     form.append('resultImage', fileR); form.append('resultName', nameR);
 
     // 调用 Supabase Edge Function（supabase.co 国内可访问）
-    var res = await fetch('https://fevrpteyclbqrixoidie.supabase.co/functions/v1/upload-pair', {method:'POST', body:form});
+    var res = await fetch('https://fevrpteyclbqrixoidie.supabase.co/functions/v1/upload-pair', {
+      method:'POST', body:form,
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
     var data = await res.json();
 
     if(!res.ok) throw new Error(data.error || '上传失败');
