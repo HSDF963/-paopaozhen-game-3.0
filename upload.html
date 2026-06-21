@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>创建碰撞组合 · 跑跑镇 3.0</title>
 <script src="supabase-client.js"></script>
-<script src="https://cdn.img.ly/packages/imgly/background-removal/1.7.0/dist/background-removal.iife.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460,#1a1a2e);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 16px}
@@ -78,51 +77,38 @@ var sb,fls={},rty=0;
 })();
 function pv(inp,lid,k){var f=inp.files[0];if(!f)return;fls[k]=f;var lb=document.getElementById(lid);lb.classList.add('has');lb.style.backgroundImage='url('+URL.createObjectURL(f)+')';lb.querySelector('.ph').style.display='none';}
 function mg(t,c){var m=document.getElementById('msg');m.textContent=t;m.className='msg on '+c;}
-// 抠图：优先 AI (@imgly)，失败则 Canvas 白底兜底
-var aiReady=false;
+// 抠图 + 压缩：洪水填充边缘 + 白底透明化
 function removeAndCompress(file){return new Promise(function(ok){
-  async function doAI(){
-    if(typeof BackgroundRemoval!=='undefined'){
-      aiReady=true;
-      var blob=await BackgroundRemoval.removeBackground(file,{progress:function(){}});
-      var img=new Image();
-      img.onload=function(){
-        var maxW=1024;var s=Math.min(1,maxW/img.width);
-        var c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;
-        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-        c.toBlob(function(b){ok(new File([b],file.name||'img.png',{type:'image/png'}));},'image/png');
-      };
-      img.src=URL.createObjectURL(blob);
-      return;
-    }
-    throw new Error('not loaded');
-  }
-  function doCanvas(){
-    var img=new Image();
-    img.onload=function(){
-      var maxW=1024;var s=Math.min(1,maxW/img.width);
-      var c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;
-      var ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
-      var d=ctx.getImageData(0,0,c.width,c.height);
-      for(var i=0;i<d.data.length;i+=4){
-        var r=d.data[i],g=d.data[i+1],b=d.data[i+2];
-        if(r>200&&g>200&&b>200&&Math.abs(r-g)<50&&Math.abs(g-b)<50&&Math.abs(r-b)<50){d.data[i+3]=0;}
+  var img=new Image();
+  img.onload=function(){
+    var maxW=1024;var s=Math.min(1,maxW/img.width);
+    var c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;
+    var ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
+    var w=c.width,h=c.height;
+    var d=ctx.getImageData(0,0,w,h);
+    var pix=d.data;
+    // 判断是否接近白色
+    function isWhite(i){var r=pix[i],g=pix[i+1],b=pix[i+2];return r>210&&g>210&&b>210&&Math.abs(r-g)<60&&Math.abs(g-b)<60&&Math.abs(r-b)<60;}
+    // 洪水填充：从四边出发，标记连通的背景区域
+    var visited=new Uint8Array(w*h);
+    var stack=[];
+    function push(x,y){if(x>=0&&x<w&&y>=0&&y<h&&!visited[y*w+x]){visited[y*w+x]=1;stack.push(y*w+x);}}
+    // 从四边出发
+    for(var x=0;x<w;x++){if(isWhite(x*4))push(x,0);if(isWhite((x+(h-1)*w)*4))push(x,h-1);}
+    for(var y=0;y<h;y++){if(isWhite(y*w*4))push(0,y);if(isWhite((w-1+y*w)*4))push(w-1,y);}
+    while(stack.length){
+      var idx=stack.pop();
+      var px=idx%w,py=Math.floor(idx/w);
+      var i=idx*4;
+      if(isWhite(i)){
+        pix[i+3]=0; // 变透明
+        push(px-1,py);push(px+1,py);push(px,py-1);push(px,py+1);
       }
-      ctx.putImageData(d,0,0);
-      c.toBlob(function(b){ok(new File([b],file.name||'img.png',{type:'image/png'}));},'image/png');
-    };
-    img.src=URL.createObjectURL(file);
-  }
-  // 如果没有加载 AI 库或上次失败过，直接用 Canvas
-  if(typeof BackgroundRemoval==='undefined'){
-    var s=document.createElement('script');
-    s.src='https://unpkg.com/@imgly/background-removal@1.7.0/dist/background-removal.iife.js';
-    s.onload=function(){doAI().catch(doCanvas);};
-    s.onerror=function(){doCanvas();};
-    document.head.appendChild(s);
-    return;
-  }
-  doAI().catch(doCanvas);
+    }
+    ctx.putImageData(d,0,0);
+    c.toBlob(function(b){ok(new File([b],file.name||'img.png',{type:'image/png'}));},'image/png');
+  };
+  img.src=URL.createObjectURL(file);
 });}
 async function up(){
   var fA=fls['a'],fB=fls['b'],fR=fls['r'];
