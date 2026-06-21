@@ -4690,19 +4690,31 @@ var _bm_c9d9=868920,_ck_b836="4c43f2c3ee7a";</script>
     };
   }
 
-  // 原生 fetch 调用 Supabase REST API（零依赖，手机可访问）
+  // 原生 fetch 调用 Supabase REST API（零依赖）
   var SBU='https://fevrpteyclbqrixoidie.supabase.co';
   var SBK='sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6';
-  var H={apikey:SBK,Authorization:'Bearer '+SBK,'Content-Type':'application/json'};
   var known={};
-  function sbGet(path){return fetch(SBU+'/rest/v1/'+path,{headers:H}).then(function(r){return r.json();});}
-  function loadAndPoll(){
-    sbGet('custom_pairs?select=*&order=created_at.asc').then(function(d){
-      if(Array.isArray(d)&&d.length){d.forEach(function(p){if(!known[p.id]){known[p.id]=true;window.addCustomPair(p,false);}});}
-    }).catch(function(e){});
-    setTimeout(loadAndPoll,8000);
+  var gt=document.getElementById('guide-text');
+  function loadPairs(){
+    var x=new XMLHttpRequest();
+    x.open('GET',SBU+'/rest/v1/custom_pairs?select=*&order=created_at.asc');
+    x.setRequestHeader('apikey',SBK);
+    x.setRequestHeader('Authorization','Bearer '+SBK);
+    x.onload=function(){
+      if(x.status>=200&&x.status<300){
+        try{
+          var d=JSON.parse(x.responseText);
+          if(Array.isArray(d)){d.forEach(function(p){if(!known[p.id]){known[p.id]=true;window.addCustomPair(p,false);}});}
+        }catch(e){}
+      }
+      setTimeout(loadPairs,8000);
+    };
+    x.onerror=function(){setTimeout(loadPairs,8000);};
+    x.ontimeout=function(){setTimeout(loadPairs,8000);};
+    x.timeout=10000;
+    x.send();
   }
-  setTimeout(loadAndPoll,2000);
+  setTimeout(loadPairs,2000);
 })();
 </script>
 </body>
