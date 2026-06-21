@@ -37,7 +37,7 @@ button.submit:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-sh
   <!-- 物品 A -->
   <div class="box" id="boxA">
     <div class="img-area" onclick="document.getElementById('fileA').click()">
-      <input type="file" id="fileA" accept="image/*" capture="environment" style="display:none" onchange="preview(this,'boxA','imgA')">
+      <input type="file" id="fileA" accept="image/*" accept="image/*" style="display:none" onchange="preview(this,'boxA','imgA')">
       <div class="placeholder" id="placeholderA">
         <div class="icon">📸</div><div class="text">物品 A</div>
       </div>
@@ -50,7 +50,7 @@ button.submit:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-sh
   <!-- 物品 B -->
   <div class="box" id="boxB">
     <div class="img-area" onclick="document.getElementById('fileB').click()">
-      <input type="file" id="fileB" accept="image/*" capture="environment" style="display:none" onchange="preview(this,'boxB','imgB')">
+      <input type="file" id="fileB" accept="image/*" accept="image/*" style="display:none" onchange="preview(this,'boxB','imgB')">
       <div class="placeholder" id="placeholderB">
         <div class="icon">📸</div><div class="text">物品 B</div>
       </div>
@@ -63,7 +63,7 @@ button.submit:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-sh
   <!-- 结果 -->
   <div class="box" id="boxR">
     <div class="img-area highlight" onclick="document.getElementById('fileR').click()">
-      <input type="file" id="fileR" accept="image/*" capture="environment" style="display:none" onchange="preview(this,'boxR','imgR')">
+      <input type="file" id="fileR" accept="image/*" accept="image/*" style="display:none" onchange="preview(this,'boxR','imgR')">
       <div class="placeholder" id="placeholderR">
         <div class="icon">📸</div><div class="text">碰撞结果</div>
       </div>
@@ -98,12 +98,20 @@ button.submit:disabled{background:linear-gradient(135deg,#9E9E9E,#757575);box-sh
 </style>
 
 <script>
-var files = {};
+var SB_URL='https://fevrpteyclbqrixoidie.supabase.co';
+var SB_KEY='sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6';
+var EDGE_URL='https://fevrpteyclbqrixoidie.supabase.co/functions/v1/upload-pair';
+var sb, files={};
+
+function initSB(){
+  if(typeof supabase!=='undefined'){sb=supabase.createClient(SB_URL,SB_KEY);loadPairs();}
+  else{setTimeout(initSB,500);}
+}
 
 function preview(input, boxId, key){
-  var f = input.files?.[0];
-  if(!f) return;
-  files[key] = f;
+  var f=input.files?.[0];
+  if(!f)return;
+  files[key]=f;
   var area = document.querySelector('#'+boxId+' .img-area');
   var ph = document.querySelector('#'+boxId+' .placeholder');
   area.classList.add('has-img');
@@ -119,7 +127,7 @@ function showMsg(text, type){
 
 async function doUpload(){
   var btn = document.getElementById('submitBtn');
-  var fileA = files['imgA'], fileB = files['imgB'], fileR = files['imgR'];
+  var fileA = files['a'], fileB = files['b'], fileR = files['r'];
   var nameA = document.getElementById('nameA').value.trim();
   var nameB = document.getElementById('nameB').value.trim();
   var nameR = document.getElementById('nameR').value.trim();
@@ -202,8 +210,8 @@ async function clearAll(){
   loadPairs();
 }
 
-// 页面加载时立即获取已上传列表
-loadPairs();
+// 页面加载时初始化 Supabase 并加载列表
+initSB();
 </script>
 </body>
 </html>

@@ -3621,7 +3621,7 @@ var _bm_af85=929315,_ck_2350="32615655ee78";</script>
         const invLeft = document.getElementById('inventory-left');
         const invRight = document.getElementById('inventory-right');
         const l_ids = [...LEFT_IDS];
-        const r_ids = ['black_bear', 'apple', 'dragon', 'broom', 'fish', 'blue', 'ladder', 'meatball'];
+        const r_ids = ['black_bear', 'apple', 'dragon', 'broom', 'fish', 'blue', 'ladder', 'meatball', 'fish'];
         const shuffle = (a) => { for(let i=a.length-1; i>0; i--){ const j=Math.floor(Math.random()*(i+1)); [a[i], a[j]]=[a[j], a[i]]; } return a; };
         shuffle(l_ids).forEach(id => invLeft.appendChild(createItemDOM(ITEMS.find(it => it.id === id))));
         shuffle(r_ids).forEach(id => invRight.appendChild(createItemDOM(ITEMS.find(it => it.id === id))));
