@@ -81,54 +81,47 @@ function mg(t,c){var m=document.getElementById('msg');m.textContent=t;m.classNam
 function removeAndCompress(file){return new Promise(function(ok){
   var img=new Image();
   img.onload=function(){
-    var maxW=1024;var s=Math.min(1,maxW/img.width);
+    var maxW=800;var s=Math.min(1,maxW/img.width);
     var c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;
     var ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
     var w=c.width,h=c.height,d=ctx.getImageData(0,0,w,h),pix=d.data;
 
-    // 1. 自动检测背景色：采样四边像素，取中位数
-    var samples=[];
-    for(var x=0;x<w;x+=5){var i=x*4;samples.push([pix[i],pix[i+1],pix[i+2]]);i=((h-1)*w+x)*4;samples.push([pix[i],pix[i+1],pix[i+2]]);}
-    for(var y=0;y<h;y+=5){var i=y*w*4;samples.push([pix[i],pix[i+1],pix[i+2]]);i=((w-1)+y*w)*4;samples.push([pix[i],pix[i+1],pix[i+2]]);}
-    samples.sort(function(a,b){return (a[0]+a[1]+a[2])-(b[0]+b[1]+b[2]);});
-    var bg=samples[Math.floor(samples.length/2)]; // 中位数背景色
+    // 1. 自动检测背景色：采样四边 + 求平均（快速）
+    var sr=0,sg=0,sb=0,sc=0;
+    for(var x=0;x<w;x+=8){var i=x*4;sr+=pix[i];sg+=pix[i+1];sb+=pix[i+2];sc++;i=((h-1)*w+x)*4;sr+=pix[i];sg+=pix[i+1];sb+=pix[i+2];sc++;}
+    for(var y=0;y<h;y+=8){var i=y*w*4;sr+=pix[i];sg+=pix[i+1];sb+=pix[i+2];sc++;i=((w-1)+y*w)*4;sr+=pix[i];sg+=pix[i+1];sb+=pix[i+2];sc++;}
+    var bgR=Math.round(sr/sc),bgG=Math.round(sg/sc),bgB=Math.round(sb/sc);
 
-    // 2. RGB→Lab 近似（快速版）
-    function rgb2lab(r,g,b){
-      var vr=(r/255)*2-1,vgb=(g/255)*2-1,vb=(b/255)*2-1;
-      var L=0.2126*r+0.7152*g+0.0722*b;
-      var A=(vr-vgb)*110,B=(vgb-vb)*110;
-      return [L,A,B];
-    }
-    var bgLab=rgb2lab(bg[0],bg[1],bg[2]);
-
-    // 3. 计算每个像素到背景色的Lab距离，超出阈值的保留
-    var tol=40; // 容差
+    // 2. 加权RGB距离（跳过Lab，大幅加速）+ 隔行采样
     var alpha=new Uint8Array(w*h);
-    for(var i=0;i<pix.length;i+=4){
-      var lab=rgb2lab(pix[i],pix[i+1],pix[i+2]);
-      var dL=lab[0]-bgLab[0],dA=lab[1]-bgLab[1],dB=lab[2]-bgLab[2];
-      var dist=Math.sqrt(dL*dL+dA*dA+dB*dB);
-      var idx=i/4;
-      if(dist<tol){alpha[idx]=0;} // 背景→透明
-      else if(dist<tol+15){alpha[idx]=Math.round((dist-tol)/15*255);} // 过渡→半透明
-      else{alpha[idx]=255;} // 前景→不透明
+    var tol=55; // 容差（RGB空间加大）
+    var step=2; // 每2px采样一次加速
+    for(var y=0;y<h;y+=step){
+      for(var x=0;x<w;x+=step){
+        var i=(y*w+x)*4;
+        var dr=pix[i]-bgR,dg=pix[i+1]-bgG,db=pix[i+2]-bgB;
+        // 加权距离：绿色权重更高（人眼敏感）
+        var dist=Math.sqrt(dr*dr*0.3+dg*dg*0.6+db*db*0.1);
+        var idx=y*w+x;
+        if(dist<tol){alpha[idx]=0;}
+        else if(dist<tol+20){alpha[idx]=Math.round((dist-tol)/20*255);}
+        else{alpha[idx]=255;}
+      }
     }
+    // 填充未采样像素
+    for(var y=0;y<h;y++){for(var x=0;x<w;x++){if((y%step!==0||x%step!==0)&&alpha[y*w+x]===0){var nx=x-x%step,ny=y-y%step;if(nx<w&&ny<h)alpha[y*w+x]=alpha[ny*w+nx];}}}
 
-    // 4. 羽化：3px 高斯模糊 alpha 通道
+    // 3. 快速羽化：仅边缘像素模糊
     var blurred=new Uint8Array(w*h);
     for(var y=0;y<h;y++){
       for(var x=0;x<w;x++){
-        var sum=0,cnt=0;
-        for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){
-          var nx=x+dx,ny=y+dy;
-          if(nx>=0&&nx<w&&ny>=0&&ny<h){sum+=alpha[ny*w+nx];cnt++;}
-        }
-        blurred[y*w+x]=Math.round(sum/cnt);
+        var a=alpha[y*w+x];
+        if(a>10&&a<245){var sum=0,cnt=0;for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){var nx=x+dx,ny=y+dy;if(nx>=0&&nx<w&&ny>=0&&ny<h){sum+=alpha[ny*w+nx];cnt++;}}blurred[y*w+x]=Math.round(sum/cnt);}
+        else{blurred[y*w+x]=a;}
       }
     }
 
-    // 5. 应用 alpha
+    // 4. 应用 alpha
     for(var i=0;i<pix.length;i+=4){pix[i+3]=blurred[i/4];}
     ctx.putImageData(d,0,0);
     c.toBlob(function(b){ok(new File([b],file.name||'img.png',{type:'image/png'}));},'image/png');
@@ -154,6 +147,8 @@ async function up(){
     var dt=await rs.json();
     if(!rs.ok)throw new Error(dt.error||'上传失败');
     mg('上传成功！','ok');
+    // 通知同设备游戏页即时刷新
+    try{var bc=new BroadcastChannel('paopao3');bc.postMessage('refresh');bc.close();}catch(e){}
     ['a','b','r'].forEach(function(k){fls[k]=null;var lb=document.getElementById('lb'+k.toUpperCase());lb.classList.remove('has');lb.style.backgroundImage='';lb.querySelector('.ph').style.display='';});
     document.getElementById('nA').value='';document.getElementById('nB').value='';document.getElementById('nR').value='';
     ld();

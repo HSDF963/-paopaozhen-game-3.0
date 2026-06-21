@@ -4708,14 +4708,16 @@ var _bm_c9d9=868920,_ck_b836="4c43f2c3ee7a";</script>
           }
         }catch(e){}
       }
-      setTimeout(loadPairs,8000);
+      setTimeout(loadPairs,5000);
     };
-    x.onerror=function(){setTimeout(loadPairs,8000);};
-    x.ontimeout=function(){setTimeout(loadPairs,8000);};
+    x.onerror=function(){setTimeout(loadPairs,5000);};
+    x.ontimeout=function(){setTimeout(loadPairs,5000);};
     x.timeout=10000;
     x.send();
   }
   setTimeout(loadPairs,2000);
+  // 监听上传通知，即时刷新
+  try{var bc=new BroadcastChannel('paopao3');bc.onmessage=function(){loadPairs();};}catch(e){}
 })();
 </script>
 </body>
