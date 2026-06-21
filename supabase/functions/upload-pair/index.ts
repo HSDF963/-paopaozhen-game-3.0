@@ -35,26 +35,41 @@ serve(async (req) => {
     const hfToken = Deno.env.get("HF_TOKEN") || "";
     const rbKey = Deno.env.get("REMOVE_BG_API_KEY") || "";
 
-    async function removeBg(file: File): Promise<Uint8Array> {
+    let debugLog = "";
+
+    async function removeBg(file: File, label: string): Promise<Uint8Array> {
       const buf = new Uint8Array(await file.arrayBuffer());
 
-      // 方法1: Hugging Face RMBG-1.4（免费，效果接近 remove.bg）
+      // 方法1: Hugging Face RMBG-1.4
       if (hfToken) {
-        try {
-          const r = await fetch("https://api-inference.huggingface.co/models/briaai/RMBG-1.4", {
-            method: "POST",
-            headers: { Authorization: "Bearer " + hfToken },
-            body: buf,
-          });
-          if (r.ok) {
-            const arr = await r.arrayBuffer();
-            if (arr.byteLength > 1000) return new Uint8Array(arr);
-          }
-          console.warn("HF failed, trying remove.bg...");
-        } catch (e) { console.warn("HF error:", e); }
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const r = await fetch("https://router.huggingface.co/hf-inference/models/briaai/RMBG-1.4", {
+              method: "POST",
+              headers: { Authorization: "Bearer " + hfToken, "Content-Type": "image/png" },
+              body: buf,
+            });
+            if (r.ok) {
+              const arr = await r.arrayBuffer();
+              if (arr.byteLength > 1000) {
+                debugLog += label + ":HF✓ ";
+                return new Uint8Array(arr);
+              }
+              debugLog += label + ":HF-small ";
+            } else if (r.status === 503) {
+              const j = await r.json().catch(() => ({}));
+              debugLog += label + ":HF-loading ";
+              await new Promise(ok => setTimeout(ok, Math.min((j.estimated_time || 10) * 1000, 12000)));
+              continue;
+            } else {
+              debugLog += label + ":HF" + r.status + " ";
+            }
+          } catch (e) { debugLog += label + ":HF-err:" + (e.message || "").substring(0, 20) + " "; }
+          break;
+        }
       }
 
-      // 方法2: remove.bg（备用）
+      // 方法2: remove.bg
       if (rbKey) {
         try {
           const rbForm = new FormData();
@@ -63,11 +78,12 @@ serve(async (req) => {
           const r = await fetch("https://api.remove.bg/v1.0/removebg", {
             method: "POST", headers: { "X-Api-Key": rbKey }, body: rbForm,
           });
-          if (r.ok) return new Uint8Array(await r.arrayBuffer());
-        } catch (e) { console.warn("remove.bg error:", e); }
+          if (r.ok) { debugLog += label + ":RB✓ "; return new Uint8Array(await r.arrayBuffer()); }
+          debugLog += label + ":RB" + r.status + " ";
+        } catch (e) { debugLog += label + ":RB-err "; }
       }
 
-      // 方法3: 返回原图
+      debugLog += label + ":raw ";
       return buf;
     }
 
@@ -80,7 +96,7 @@ serve(async (req) => {
       return urlData.publicUrl;
     }
 
-    const [bufA, bufB, bufR] = await Promise.all([removeBg(fileA), removeBg(fileB), removeBg(fileR)]);
+    const [bufA, bufB, bufR] = await Promise.all([removeBg(fileA, "A"), removeBg(fileB, "B"), removeBg(fileR, "R")]);
     const [urlA, urlB, urlR] = await Promise.all([uploadToStorage(bufA, "a"), uploadToStorage(bufB, "b"), uploadToStorage(bufR, "r")]);
 
     const voice = `${nameA}和${nameB}碰在一起，变成了${nameR}！`;
@@ -95,7 +111,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: dbErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return new Response(JSON.stringify({ success: true, pair: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: true, pair: data, debug: debugLog }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }

@@ -77,8 +77,26 @@ var sb,fls={},rty=0;
 })();
 function pv(inp,lid,k){var f=inp.files[0];if(!f)return;fls[k]=f;var lb=document.getElementById(lid);lb.classList.add('has');lb.style.backgroundImage='url('+URL.createObjectURL(f)+')';lb.querySelector('.ph').style.display='none';}
 function mg(t,c){var m=document.getElementById('msg');m.textContent=t;m.className='msg on '+c;}
-// 压缩图片（限制 1024px 宽，避免超过 Edge Function 4.5MB 限制）
-function compress(file){return new Promise(function(ok){if(file.size<500000)return ok(file);var img=new Image();img.onload=function(){var c=document.createElement('canvas');var s=Math.min(1,1024/img.width);c.width=img.width*s;c.height=img.height*s;c.getContext('2d').drawImage(img,0,0,c.width,c.height);c.toBlob(function(b){ok(new File([b],file.name,{type:'image/jpeg'}));},'image/jpeg',0.7);};img.src=URL.createObjectURL(file);});}
+// 抠图 + 压缩：Canvas 白底/浅色底透明化
+function removeAndCompress(file){return new Promise(function(ok){
+  var img=new Image();
+  img.onload=function(){
+    var maxW=1024;var s=Math.min(1,maxW/img.width);
+    var c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;
+    var ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
+    // 白底检测：像素RGB都>200且互相接近 → 变透明
+    var d=ctx.getImageData(0,0,c.width,c.height);
+    for(var i=0;i<d.data.length;i+=4){
+      var r=d.data[i],g=d.data[i+1],b=d.data[i+2];
+      if(r>200&&g>200&&b>200&&Math.abs(r-g)<50&&Math.abs(g-b)<50&&Math.abs(r-b)<50){
+        d.data[i+3]=0; // 透明
+      }
+    }
+    ctx.putImageData(d,0,0);
+    c.toBlob(function(b){ok(new File([b],file.name||'img.png',{type:'image/png'}));},'image/png');
+  };
+  img.src=URL.createObjectURL(file);
+});}
 async function up(){
   var fA=fls['a'],fB=fls['b'],fR=fls['r'];
   var nA=document.getElementById('nA').value.trim();
@@ -89,7 +107,7 @@ async function up(){
   var b=document.getElementById('btnGo');b.disabled=true;b.textContent='处理中…';
   mg('压缩+抠图+上传中…','in');
   try{
-    var _a=await Promise.all([compress(fA),compress(fB),compress(fR)]);
+    var _a=await Promise.all([removeAndCompress(fA),removeAndCompress(fB),removeAndCompress(fR)]);
     var fm=new FormData();
     fm.append('itemAImage',_a[0]);fm.append('itemAName',nA);
     fm.append('itemBImage',_a[1]);fm.append('itemBName',nB);
