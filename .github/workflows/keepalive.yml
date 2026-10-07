@@ -1,33 +1,14 @@
 name: keepalive
 on:
   schedule:
-    - cron: '0 */6 * * *'   # 每6小时一次
+    - cron: "0 */6 * * *"
   workflow_dispatch: {}
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Ping Supabase to prevent pause
-        run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://fevrpteyclbqrixoidie.supabase.co/rest/v1/custom_pairs?select=id&limit=1" \
-            -H "apikey: sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6" \
-            -H "Authorization: Bearer sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6")
-          echo "HTTP $code"
   schedule:
-    - cron: '0 */6 * * *'   # 每6小时一次
+    - cron: "0 */6 * * *"
   workflow_dispatch: {}
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase to prevent pause
-        run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://fevrpteyclbqrixoidie.supabase.co/rest/v1/custom_pairs?select=id&limit=1" \
-            -H "apikey: sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6" \
-            -H "Authorization: Bearer sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6")
-          echo "HTTP $code"
-          test "$code" != "000"
-        run: |
-          code=$(curl -s -o /
+      - name: Ping Supabase
+        run: 'curl -s -o /dev/null "https://fevrpteyclbqrixoidie.supabase.co/rest/v1/custom_pairs?select=id&limit=1" -H "apikey: sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6" -H "Authorization: Bearer sb_publishable_feC0LWwFTEuQPjtOXwR6Cw_jXTvJot6"'
